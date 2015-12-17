@@ -1,0 +1,37 @@
+{
+  "name": "drupal-auth-proxy",
+  "version": "0.0.1",
+  "description": "Forwards requests only if the user has a valid Drupal Session cookie for a user with a given role on a given Drupal 7 site.",
+  "main": "drupal-auth-proxy.litcoffee",
+  "dependencies": {
+    "config": "~1.17.1",
+    "cookie-parser": "~1.4.0",
+    "errorhandler": "~1.4.2",
+    "express": "~4.13.3",
+    "http-proxy": "~1.12.0",
+    "morgan": "~1.6.1",
+    "mysql": "~2.10.0",
+    "underscore": "~1.8.3",
+    "url": "~0.11.0",
+    "wait.for": "~0.6.6",
+    "coffee-script": "~1.10.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "./start.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cardcorp/drupal-auth-proxy.git"
+  },
+  "keywords": [
+    "Drupal",
+    "Coffeescript",
+    "Proxy"
+  ],
+  "author": "Matt Chapman <Matt.Chapman@card.com>",
+  "license": "TBD",
+  "bugs": {
+    "url": "https://github.com/cardcorp/drupal-auth-proxy/issues"
+  }
+}
