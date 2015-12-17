@@ -1,14 +1,29 @@
 {
+  /* The port this proxy runs on. Probably 80 in production. */
   "appPort": 8000,
+
+  /* Where to find Drupal. */
   "drupalPort": 80,
   "drupalHost": "cardlike.localhost",
-  "drupalPrefix": "cl_",
+
+  /* The numeric Role ID that users must have to be granted access by this
+   * proxy. 2 is 'authenticated' and '3' is administrator. You can use your
+   * own  custom role too.
+   */
   "roleId": 3,
+
+  /* Drupal Database credentials. Can be read-only. */
   "dbHost": "127.0.0.1",
   "dbUser": "root",
   "dbPass": "",
-  "dbName": "icardlike",
-  "authPass": "",
+  "dbName": "drupal",
+  "dbPrefix": "cl_",
+
+  /* If there is a trusted rever proxy, live Varnish, in front of this app, then
+   * set 'trustProxy' to 'true'.
+   */
   "trustProxy": false,
-  "devMode": true
+
+  /* Effects logging and verbosity. */
+  "devMode": false
 }
