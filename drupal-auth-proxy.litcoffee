@@ -15,10 +15,6 @@ Dependencies.
     wait = require 'wait.for'
     u = require 'underscore'
 
-Globals.
-
-    hostname = os.hostname()
-
 Read Configuration.
 
     app_port = config.get('appPort') || 8088
@@ -30,7 +26,7 @@ Read Configuration.
         password: config.get('dbPass') || '',
         database: config.get('dbName') || 'drupal'
 
-Database Functions.
+Manage a Database connection taht automatically reconnects as needed.
 
     persistentDbConnection = () ->
       connection = mysql.createConnection(db_config); # Recreate the connection, since
@@ -54,12 +50,6 @@ Database Functions.
 
     db = persistentDbConnection()
 
-    # @todo deprecate?
-    execSQL = (queryStr, cb) ->
-      db.query queryStr, (err, rows) ->
-        throw err if err
-        cb(rows)
-
 Set-up the Proxy.
 
     Proxy = new httpProxy.createProxyServer()
@@ -67,16 +57,19 @@ Set-up the Proxy.
     Proxy.on 'error', (e) ->
       console.log(e)
 
-    app = websrv()
+Set-up Express.
 
-    if (config.get('authPass') != '')
-      app.use(websrv.basicAuth('dev', config.get('authPass'), 'Blocking robots. User: `dev`'))
+    app = websrv()
 
     app.use logger(if config.get('devMode') then 'dev' else 'default')
     app.use cookieParser()
 
+If we're behind a trusted proxy, we'll forward some headers.
+
     if config.get('trustProxy')
       app.enable 'trust proxy'
+
+The is the function that actually forwards a request to the backend service.
 
     forwardRequest = (req, res) ->
       res.header('Drupal-Auth-Proxy-Host', hostname)
@@ -84,6 +77,9 @@ Set-up the Proxy.
         console.log 'FORWARD: ' + req.url # @debug
       Proxy.web req, res, {target: 'http://' + drupal_host + ':' + drupal_port}, (e) ->
         console.log(e)
+
+This function runs inside a "Fiber" which allows sychronous operations without
+blocking the main event loop.
 
     handleRequest = (req, res) ->
       console.log(req.cookies)
@@ -100,8 +96,11 @@ Set-up the Proxy.
         res.status(403)
         res.send('Access Denied.')
 
+Here we query the Drupal data to see if a given Session ID is associated with a
+logged-in user with the role required by our configuration.
+
     isValidCookie = (session_id) -> 
-      prefix = config.get('drupalPrefix') 
+      prefix = config.get('dbPrefix') 
       query = "SELECT r.rid
                 FROM #{ prefix }sessions s
                 JOIN #{ prefix }users_roles r ON s.uid = r.uid
@@ -109,9 +108,13 @@ Set-up the Proxy.
       rows = wait.forMethod(db, 'query', query)
       user_roles = u.chain(rows).pluck('rid').value()
       return config.get('roleId') in user_roles
-      
-      app.all '*', (req, res, next) ->
-        wait.launchFiber(handleRequest, req, res)
+
+Tell express to handle all requests.
+
+    app.all '*', (req, res, next) ->
+      wait.launchFiber(handleRequest, req, res)
+
+For some reason that I can't remember, this works best when added last.
 
     app.use errorhandler()
 
