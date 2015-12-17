@@ -1,0 +1,14 @@
+{
+  "appPort": 8000,
+  "drupalPort": 80,
+  "drupalHost": "cardlike.localhost",
+  "drupalPrefix": "cl_",
+  "roleId": 3,
+  "dbHost": "127.0.0.1",
+  "dbUser": "root",
+  "dbPass": "",
+  "dbName": "icardlike",
+  "authPass": "",
+  "trustProxy": false,
+  "devMode": true
+}
