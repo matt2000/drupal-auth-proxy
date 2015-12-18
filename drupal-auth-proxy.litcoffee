@@ -15,16 +15,13 @@ Dependencies.
     wait = require 'wait.for'
     u = require 'underscore'
 
-Read Configuration.
+Read DB Configuration.
 
-    app_port = config.get('appPort') || 8088
-    drupal_port = config.get('drupalPort') || 80
-    drupal_host = config.get('drupalHost') || 'localhost' # @todo can/should we read this from req?
     db_config =
-        host: config.get('dbHost') || 'localhost',
-        user: config.get('dbUser') || 'root',
-        password: config.get('dbPass') || '',
-        database: config.get('dbName') || 'drupal'
+        host: config.get('dbHost'),
+        user: config.get('dbUser'),
+        password: config.get('dbPass'),
+        database: config.get('dbName')
 
 Manage a Database connection taht automatically reconnects as needed.
 
@@ -54,8 +51,8 @@ Set-up the Proxy.
 
     Proxy = new httpProxy.createProxyServer()
 
-    Proxy.on 'error', (e) ->
-      console.log(e)
+    Proxy.on 'error', (error) ->
+      console.log(error)
 
 Set-up Express.
 
@@ -75,8 +72,8 @@ The is the function that actually forwards a request to the backend service.
       res.header('Drupal-Auth-Proxy-Host', hostname)
       if config.get('devMode')
         console.log 'FORWARD: ' + req.url # @debug
-      Proxy.web req, res, {target: 'http://' + drupal_host + ':' + drupal_port}, (e) ->
-        console.log(e)
+      Proxy.web req, res, {target: config.get('backend')}, (error) ->
+        console.log(error)
 
 This function runs inside a "Fiber" which allows sychronous operations without
 blocking the main event loop.
@@ -121,4 +118,4 @@ For some reason that I can't remember, this works best when added last.
 Start the server.
 
     http.createServer(app).listen(app_port)
-    console.log("Listening on port #{ app_port }.")
+    console.log("Listening on port #{ config.get('app_port') }.")
