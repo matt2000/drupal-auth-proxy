@@ -79,6 +79,8 @@ This function runs inside a "Fiber" which allows sychronous operations without
 blocking the main event loop.
 
     handleRequest = (req, res) ->
+      if config.get('devMode')
+        console.log(req.cookies)
       allow_access = u.chain(req.cookies)
         .keys()
         .filter (x) -> x.match(/^SESS/)
