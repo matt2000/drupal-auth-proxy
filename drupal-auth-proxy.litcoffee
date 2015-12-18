@@ -83,7 +83,7 @@ blocking the main event loop.
         console.log(req.cookies)
       allow_access = u.chain(req.cookies)
         .keys()
-        .filter (x) -> x.match(/^SESS/)
+        .filter (x) -> x.match(/^(S|)SESS/)
         .find (session_key) -> 
            isValidCookie(req.cookies[session_key])
 
