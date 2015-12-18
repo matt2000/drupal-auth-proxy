@@ -105,6 +105,10 @@ logged-in user with the role required by our configuration.
                 WHERE sid = '#{ session_id }';"
       rows = wait.forMethod(db, 'query', query)
       user_roles = u.chain(rows).pluck('rid').value()
+      if config.get('devMode')
+        console.log query
+        console.log(rows)
+        console.log(user_roles)
       return config.get('roleId') in user_roles
 
 Tell express to handle all requests.
