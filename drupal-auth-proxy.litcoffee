@@ -58,7 +58,7 @@ Set-up Express.
 
     app = websrv()
 
-    app.use logger(if config.get('devMode') then 'dev' else 'default')
+    app.use logger(if config.get('devMode') then 'dev' else 'combined')
     app.use cookieParser()
 
 If we're behind a trusted proxy, we'll forward some headers.
@@ -79,7 +79,6 @@ This function runs inside a "Fiber" which allows sychronous operations without
 blocking the main event loop.
 
     handleRequest = (req, res) ->
-      console.log(req.cookies)
       allow_access = u.chain(req.cookies)
         .keys()
         .filter (x) -> x.match(/^SESS/)
@@ -117,5 +116,6 @@ For some reason that I can't remember, this works best when added last.
 
 Start the server.
 
-    http.createServer(app).listen(app_port)
-    console.log("Listening on port #{ config.get('app_port') }.")
+    appPort = config.get('appPort')
+    http.createServer(app).listen(appPort)
+    console.log("Listening on port #{ appPort }.")
