@@ -69,7 +69,7 @@ If we're behind a trusted proxy, we'll forward some headers.
 The is the function that actually forwards a request to the backend service.
 
     forwardRequest = (req, res) ->
-      res.header('Drupal-Auth-Proxy-Host', hostname)
+      res.header('Drupal-Auth-Proxy-Host', os.hostname())
       if config.get('devMode')
         console.log 'FORWARD: ' + req.url # @debug
       Proxy.web req, res, {target: config.get('backend')}, (error) ->
