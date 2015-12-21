@@ -8,7 +8,7 @@ Dependencies.
 - Non-blocking wrappers for synchronous functions are provided by 'wait'.
 - The web server framework is 'websrv'. Currently Express is used, but it could
   be stripped out fairly easily for direct use of Node's http library or
-  somethign else.
+  something else.
 
 File a bug report if any of the other dependencies' purpose is not sufficiently
 clear from the variable name.
@@ -27,6 +27,8 @@ clear from the variable name.
     u = require 'underscore'
     fs = require 'fs'
 
+Database
+----
 Read DB Configuration.
 
     db_config =
@@ -59,6 +61,8 @@ Manage a Database connection that automatically reconnects as needed.
 
     db = persistentDbConnection()
 
+Web Server
+----
 Set-up Express with logging and cookie parsing.
 
     app = websrv()
