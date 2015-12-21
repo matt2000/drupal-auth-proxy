@@ -6,6 +6,7 @@ Dependencies.
     http = require 'http'
     httpProxy = require 'http-proxy'
     websrv = require 'express'
+    https = require 'https'
     config = require 'config'
     mysql = require 'mysql'
     os = require 'os'
@@ -14,6 +15,7 @@ Dependencies.
     errorhandler = require 'errorhandler'
     wait = require 'wait.for'
     u = require 'underscore'
+    fs = require 'fs'
 
 Read DB Configuration.
 
@@ -123,5 +125,14 @@ For some reason that I can't remember, this works best when added last.
 Start the server.
 
     appPort = config.get('appPort')
-    http.createServer(app).listen(appPort)
+    cert = config.get('sslCertPath')
+    key = config.get('sslKeyPath')
+    if fs.existsSync(cert) and fs.existsSync(key)
+      options =
+        "cert": fs.readFileSync(cert),
+        "key": fs.readFileSync(key)
+      https.createServer(options, app).listen(appPort)
+    else
+      console.log("Missing Certificate or key. Running without SSL.")
+      http.createServer(app).listen(appPort)
     console.log("Listening on port #{ appPort }.")
