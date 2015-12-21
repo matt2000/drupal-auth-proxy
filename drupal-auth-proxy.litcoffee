@@ -94,7 +94,7 @@ blocking the main event loop.
         forwardRequest(req, res)
       else
         res.status(403)
-        res.send('Access Denied.')
+        res.send(config.get('accessDeniedMessage'))
 
 Here we query the Drupal data to see if a given Session ID is associated with a
 logged-in user with the role required by our configuration.
