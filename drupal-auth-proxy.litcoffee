@@ -115,13 +115,14 @@ below.
       user_roles = u.chain(rows).pluck('rid').value()
       return config.get('roleId') in user_roles
 
-Tell express to handle all requests inside a "Fiber" which allows sychronous
-operations without blocking the main event loop.
+Tell the web server framework to handle all requests inside a "Fiber" which
+allows sychronous operations without blocking the main event loop.
 
     app.all '*', (req, res, next) ->
       wait.launchFiber(handleRequest, req, res)
 
-For some reason that I can't remember, this works best when added last.
+This configures the web framework with an errorhandler(). For some reason that
+I can't remember, I think this works best when added last.
 
     app.use errorhandler()
 
