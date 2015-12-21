@@ -2,9 +2,14 @@ HTTP Reverse Proxy that authenticates against a Drupal User account.
 ====
 
 Dependencies.
+----
 - Utility functions are provided by 'underscore'.
 - File-system functions are provided by 'fs'.
 - Non-blocking wrappers for synchronous functions are provided by 'wait'.
+- The web server framework is 'websrv'. Currently Express is used, but it could
+  be stripped out fairly easily for direct use of Node's http library or
+  somethign else.
+
 File a bug report if any of the other dependencies' purpose is not sufficiently
 clear from the variable name.
 
