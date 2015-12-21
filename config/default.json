@@ -4,7 +4,7 @@
   /* Set these if using SSL. */
   "sslCertPath": "",
   "sslKeyPath": "",
-  "accessDeniedMessage": "Access Denied."
+  "accessDeniedMessage": "Access Denied.",
 
   /* HTTP address for the backend. */
   "backend": "http://localhost:80",
