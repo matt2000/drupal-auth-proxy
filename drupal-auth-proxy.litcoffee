@@ -2,6 +2,11 @@ HTTP Reverse Proxy that authenticates against a Drupal User account.
 ====
 
 Dependencies.
+- Utility functions are provided by 'underscore'.
+- File-system functions are provided by 'fs'.
+- Non-blocking wrappers for synchronous functions are provided by 'wait'.
+File a bug report if any of the other dependencies' purpose is not sufficiently
+clear from the variable name.
 
     http = require 'http'
     httpProxy = require 'http-proxy'
@@ -25,7 +30,7 @@ Read DB Configuration.
         password: config.get('dbPass'),
         database: config.get('dbName')
 
-Manage a Database connection taht automatically reconnects as needed.
+Manage a Database connection that automatically reconnects as needed.
 
     persistentDbConnection = () ->
       connection = mysql.createConnection(db_config); # Recreate the connection, since
@@ -49,24 +54,25 @@ Manage a Database connection taht automatically reconnects as needed.
 
     db = persistentDbConnection()
 
-Set-up the Proxy.
-
-    Proxy = new httpProxy.createProxyServer()
-
-    Proxy.on 'error', (error) ->
-      console.log(error)
-
-Set-up Express.
+Set-up Express with logging and cookie parsing.
 
     app = websrv()
 
     app.use logger(if config.get('devMode') then 'dev' else 'combined')
     app.use cookieParser()
 
-If we're behind a trusted proxy, we'll forward some headers.
+If we're behind a trusted reverse proxy, like Varnish, we'll forward some
+headers.
 
     if config.get('trustProxy')
       app.enable 'trust proxy'
+
+Set-up our Proxy for relaying requests to our backend.
+
+    Proxy = new httpProxy.createProxyServer()
+
+    Proxy.on 'error', (error) ->
+      console.log(error)
 
 The is the function that actually forwards a request to the backend service.
 
@@ -77,8 +83,7 @@ The is the function that actually forwards a request to the backend service.
       Proxy.web req, res, {target: config.get('backend')}, (error) ->
         console.log(error)
 
-This function runs inside a "Fiber" which allows sychronous operations without
-blocking the main event loop.
+This is the callback used by the web server framework.
 
     handleRequest = (req, res) ->
       if config.get('devMode')
@@ -86,9 +91,8 @@ blocking the main event loop.
       allow_access = u.chain(req.cookies)
         .keys()
         .filter (x) -> x.match(/^(S|)SESS/)
-        .find (session_key) -> 
+        .find (session_key) ->
            isValidCookie(req.cookies[session_key])
-
 
       if allow_access.value()
         forwardRequest(req, res)
@@ -97,23 +101,22 @@ blocking the main event loop.
         res.send(config.get('accessDeniedMessage'))
 
 Here we query the Drupal data to see if a given Session ID is associated with a
-logged-in user with the role required by our configuration.
+logged-in user with the role required by our configuration. Because of the use
+of wait.forMethod(), this should be run inside a "Fiber," which is explained
+below.
 
-    isValidCookie = (session_id) -> 
-      prefix = config.get('dbPrefix') 
+    isValidCookie = (session_id) ->
+      prefix = config.get('dbPrefix')
       query = "SELECT r.rid
                 FROM #{ prefix }sessions s
                 JOIN #{ prefix }users_roles r ON s.uid = r.uid
                 WHERE sid = '#{ session_id }';"
       rows = wait.forMethod(db, 'query', query)
       user_roles = u.chain(rows).pluck('rid').value()
-      if config.get('devMode')
-        console.log query
-        console.log(rows)
-        console.log(user_roles)
       return config.get('roleId') in user_roles
 
-Tell express to handle all requests.
+Tell express to handle all requests inside a "Fiber" which allows sychronous
+operations without blocking the main event loop.
 
     app.all '*', (req, res, next) ->
       wait.launchFiber(handleRequest, req, res)
