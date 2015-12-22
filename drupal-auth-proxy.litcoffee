@@ -44,14 +44,15 @@ Manage a Database connection that automatically reconnects as needed.
 
       connection.connect (err) ->
 
-Recreate the connection, since the old one cannot be reused. The server is
-either down or restarting (takes a while sometimes)
+Recreate the connection, since the old one cannot be reused. The server could be
+down temporarily.
 
         if err
           console.log('error when connecting to db:', err);
 
-We introduce a delay before attempting to reconnect, to avoid a hot loop, and
-to allow our node script to process asynchronous requests in the meantime.
+We introduce a delay before attempting to reconnect, to avoid a hot loop. Andj
+to allow our node script to process asynchronous requests in the meantime, if
+there's anything that can be done without a database connection.
 
           setTimeout(persistentDbConnection, 2000);
 
