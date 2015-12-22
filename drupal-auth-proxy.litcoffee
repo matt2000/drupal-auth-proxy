@@ -40,24 +40,36 @@ Read DB Configuration.
 Manage a Database connection that automatically reconnects as needed.
 
     persistentDbConnection = () ->
-      connection = mysql.createConnection(db_config); # Recreate the connection, since
-                                                      # the old one cannot be reused.
+      connection = mysql.createConnection(db_config);
 
-      connection.connect (err) ->              # The server is either down
-        if err                                      # or restarting (takes a while sometimes)
+      connection.connect (err) ->
+
+Recreate the connection, since the old one cannot be reused. The server is
+either down or restarting (takes a while sometimes)
+
+        if err
           console.log('error when connecting to db:', err);
-          setTimeout(persistentDbConnection, 2000); # We introduce a delay before attempting to reconnect,
-                                              # to avoid a hot loop, and to allow our node script to
-                                              # process asynchronous requests in the meantime.
-                                              # If you're also serving http, display a 503 error.
+
+We introduce a delay before attempting to reconnect, to avoid a hot loop, and
+to allow our node script to process asynchronous requests in the meantime.
+
+          setTimeout(persistentDbConnection, 2000);
+
       connection.on 'error', (err) ->
         console.log('db error', err);
-        if err.code is 'PROTOCOL_CONNECTION_LOST'     # Connection to the MySQL server is usually
-          persistentDbConnection();                         # lost due to either server restart, or a
-        else                                          # connnection idle timeout (the wait_timeout
-          throw err;                                  # server variable configures this)
+
+Connection to the MySQL server is usually lost due to either server restart,
+or a connnection idle timeout. (The wait_timeout mysql variable configures
+this.)
+
+        if err.code is 'PROTOCOL_CONNECTION_LOST'
+          persistentDbConnection();
+        else
+          throw err;
 
       return connection
+
+Instantiate the database connection in a global object.
 
     db = persistentDbConnection()
 
