@@ -11,7 +11,7 @@ on a given Drupal 7 site.
 - `npm install`
 
 ## Configure
-- Copy `config/default.json` to `config/your.hostname.json` and fill in desired
+- Copy `config/default.json` to `config/production.json` and fill in desired
   values.
 - We need to be able to read your Drupal site's cookies, so that means this
   needs to run on the same domain, or a sub-domain, of the Drupal site. See
