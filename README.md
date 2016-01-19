@@ -13,9 +13,15 @@ on a given Drupal 7 site.
 ## Configure
 - Copy `config/default.json` to `config/production.json` and fill in desired
   values.
+- We use the node config module, so various naming schemes are supported for
+  maintaining multiple different configurations. See, e.g.,
+  https://github.com/lorenwest/node-config/wiki/Configuration-Files#file-formats
 - We need to be able to read your Drupal site's cookies, so that means this
   needs to run on the same domain, or a sub-domain, of the Drupal site. See
   settings.php at the definition of $cookie_domain.
 
 ## Run
 - See or Execute `./start.sh`
+- For debugging, you might want to run
+  `NODE_ENV='development' ./node_modules/.bin/coffee drupal-auth-proxy.litcoffee`
+  See: http://expressjs.com/en/advanced/best-practice-performance.html#env
