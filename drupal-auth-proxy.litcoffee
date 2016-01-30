@@ -26,6 +26,7 @@ clear from the variable name.
     wait = require 'wait.for'
     u = require 'underscore'
     fs = require 'fs'
+    cache = require 'memory-cache'
 
 Database
 ----
@@ -114,7 +115,7 @@ This is the callback used by the web server framework.
         .keys()
         .filter (x) -> x.match(/^(S|)SESS/)
         .find (session_key) ->
-           isValidCookie(req.cookies[session_key])
+           isValidCookie(req, session_key)
 
       if allow_access.value()
         forwardRequest(req, res)
@@ -127,14 +128,29 @@ logged-in user with the role required by our configuration. Because of the use
 of wait.forMethod(), this should be run inside a "Fiber," which is explained
 below.
 
-    isValidCookie = (session_id) ->
-      prefix = config.get('dbPrefix')
-      query = "SELECT r.rid
-                FROM #{ prefix }sessions s
-                JOIN #{ prefix }users_roles r ON s.uid = r.uid
-                WHERE sid = '#{ session_id }';"
-      rows = wait.forMethod(db, 'query', query)
-      user_roles = u.chain(rows).pluck('rid').value()
+    isValidCookie = (req, session_key) ->
+      session_id = req.cookies[session_key]
+
+We first check a local cache.
+
+      user_roles = cache.get(session_id)
+      if not !user_roles?
+
+When we don't already know the roles, we look them up in the Drupal database.
+
+        prefix = config.get('dbPrefix')
+        query = "SELECT r.rid
+                  FROM #{ prefix }sessions s
+                  JOIN #{ prefix }users_roles r ON s.uid = r.uid
+                  WHERE sid = '#{ session_id }';"
+        rows = wait.forMethod(db, 'query', query)
+        user_roles = u.chain(rows).pluck('rid').value()
+
+We cache query results per session for 30 seconds, to avoid look-ups for every
+resource in a page request.
+
+        cache.put(session_id, user_roles, 30000)
+
       return config.get('roleId') in user_roles
 
 Tell the web server framework to handle all requests inside a "Fiber" which
