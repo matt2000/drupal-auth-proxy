@@ -26,6 +26,7 @@ clear from the variable name.
     wait = require 'wait.for'
     u = require 'underscore'
     fs = require 'fs'
+    cache = require 'memory-cache'
 
 Database
 ----
@@ -96,7 +97,8 @@ Set-up our Proxy for relaying requests to our backend.
     Proxy.on 'error', (error) ->
       console.log(error)
 
-The is the function that actually forwards a request to the backend service.
+The is the function that actually forwards a request to the backend
+service.
 
     forwardRequest = (req, res) ->
       res.header('Drupal-Auth-Proxy-Host', os.hostname())
@@ -114,7 +116,7 @@ This is the callback used by the web server framework.
         .keys()
         .filter (x) -> x.match(/^(S|)SESS/)
         .find (session_key) ->
-           isValidCookie(req.cookies[session_key])
+           isValidCookie(req, session_key)
 
       if allow_access.value()
         forwardRequest(req, res)
@@ -122,29 +124,81 @@ This is the callback used by the web server framework.
         res.status(403)
         res.send(config.get('accessDeniedMessage'))
 
-Here we query the Drupal data to see if a given Session ID is associated with a
-logged-in user with the role required by our configuration. Because of the use
-of wait.forMethod(), this should be run inside a "Fiber," which is explained
-below.
+Here we query the Drupal data to see if a given Session ID is associated
+with a logged-in user with the role required by our configuration.
+Because of the use of wait.forMethod(), this should be run inside a
+"Fiber," which is explained below.
 
-    isValidCookie = (session_id) ->
-      prefix = config.get('dbPrefix')
-      query = "SELECT r.rid
-                FROM #{ prefix }sessions s
-                JOIN #{ prefix }users_roles r ON s.uid = r.uid
-                WHERE sid = '#{ session_id }';"
-      rows = wait.forMethod(db, 'query', query)
-      user_roles = u.chain(rows).pluck('rid').value()
+    isValidCookie = (req, session_key) ->
+      session_id = req.cookies[session_key]
+
+We first check a local cache.
+
+      user_roles = cache.get(session_id)
+      if not user_roles?
+
+When we don't already know the roles, we look them up in the Drupal
+database.
+
+        prefix = config.get('dbPrefix')
+        query = "SELECT r.rid
+                  FROM #{ prefix }sessions s
+                  JOIN #{ prefix }users_roles r ON s.uid = r.uid
+                  WHERE sid = '#{ session_id }';"
+        rows = wait.forMethod(db, 'query', query)
+        user_roles = u.chain(rows).pluck('rid').value()
+
+We cache query results per session for 5 seconds, to avoid look-ups for
+every resource in a page request.
+
+        cache.put(session_id, user_roles, 5000)
+
+If we didn't find any roles, deny access.
+
+      if user_roles.length < 1
+          return false
+
+Here we can support different role requirements by path. We match by
+removing subpaths in the request url until we find a match in the
+configuration, or reach the root, at which point we use the default role Id.
+
+      if config.get("devMode")
+          console.log('Drupal Roles: ' + user_roles)
+
+      if config.has('roleIdPath')
+          path_to_lookup = req.path
+
+Check for an exact match.
+
+          if config.get('roleIdPath').has(path_to_lookup)
+            return config.get('roleIdPath').get(path_to_lookup) in user_roles
+
+Remove sub-paths until we have a path that is configured, or the root.
+
+          while path_to_lookup.length > 1 and not config.get('roleIdPath').has(path_to_lookup)
+            split = path_to_lookup.split("/")
+            split.pop()
+            path_to_lookup = split.join("/")
+            if config.get("devMode")
+              console.log('Look-up: `' + path_to_lookup + '`')
+
+          if config.get('roleIdPath').has(path_to_lookup)
+            return config.get('roleIdPath').get(path_to_lookup) in user_roles
+
+At this point, we didn't find a configured path, so we use the default.
+
+      if config.get("devMode")
+        console.log('Root fallback.')
       return config.get('roleId') in user_roles
 
-Tell the web server framework to handle all requests inside a "Fiber" which
-allows sychronous operations without blocking the main event loop.
+Tell the web server framework to handle all requests inside a "Fiber"
+which allows sychronous operations without blocking the main event loop.
 
     app.all '*', (req, res, next) ->
       wait.launchFiber(handleRequest, req, res)
 
-This configures the web framework with an errorhandler(). For some reason that
-I can't remember, I think this works best when added last.
+This configures the web framework with an errorhandler(). For some
+reason that I can't remember, I think this works best when added last.
 
     app.use errorhandler()
 
