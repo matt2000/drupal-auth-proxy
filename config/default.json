@@ -14,6 +14,18 @@
    * own  custom role too.
    */
   "roleId": 3,
+  /* You can restrict access to certain paths by a different role. If a
+   * given path is listed under "roleIdPath", then the user must have
+   * that role, or they will be denied access, regardless of the value
+   * of "roleId". So "roleId" is a default, not an "override" or
+   * "master" level access.
+   *
+   * Example config:
+  "roleIdPath": {
+    "/foo": 7,
+    "/foo/bar": 6
+  },
+  /**/
 
   /* Drupal Database credentials. Can be read-only access. */
   "dbHost": "127.0.0.1",
@@ -22,7 +34,7 @@
   "dbName": "drupal",
   "dbPrefix": "",
 
-  /* If there is a trusted rever proxy, live Varnish, in front of this app, then
+  /* If there is a trusted reverse proxy, like Varnish, in front of this app, then
    * set "trustProxy" to "true".
    */
   "trustProxy": false,
