@@ -20,7 +20,6 @@ clear from the variable name.
     config = require 'config'
     mysql = require 'mysql'
     os = require 'os'
-    logger = require 'morgan'
     cookieParser = require 'cookie-parser'
     errorhandler = require 'errorhandler'
     wait = require 'wait.for'
@@ -75,20 +74,8 @@ Instantiate the database connection in a global object.
 
     db = persistentDbConnection()
 
-Web Server
+Proxy set-up
 ----
-Set-up Express with logging and cookie parsing.
-
-    app = websrv()
-
-    app.use logger(if config.get('devMode') then 'dev' else 'combined')
-    app.use cookieParser()
-
-If we're behind a trusted reverse proxy, like Varnish, we'll forward some
-headers.
-
-    if config.get('trustProxy')
-      app.enable 'trust proxy'
 
 Set-up our Proxy for relaying requests to our backend.
 
@@ -97,39 +84,74 @@ Set-up our Proxy for relaying requests to our backend.
     Proxy.on 'error', (error) ->
       console.log(error)
 
+Utility Functions
+----
+
+Collect all the data for logging into a string.
+
+    logger = (req, res) ->
+      log_data =
+        remote_ip: req.ip
+        drupal_uid: req.drupal_uid
+        request_time_utc: req.received_time.toUTCString()
+        http_method: req.method
+        request_url: req.url
+        response_code: res.statusCode
+        content_length: res.get('content-length')
+        referrer: req.headers['referer'] || req.headers['referrer']
+        user_agent: req.headers['user-agent']
+        drupal_session: req.drupal_session
+        is_authorized: res.is_authorized.toString()
+
+      return JSON.stringify(log_data)
+
+This is the callback used by the web server framework.
+
+    handleRequest = (req, res) ->
+      req.drupal_uid = getDrupalUserId(req)
+      req.received_time = new Date()
+      if config.get('devMode')
+        console.log(req.cookies)
+      sessions = getSessionCookies(req)
+      authorized_session = u.chain(sessions).find (session_key) ->
+        isAuthorized(req, session_key)
+
+      req.drupal_session = req.cookies[authorized_session.value()] || req.cookies[sessions[0]]
+
+      if authorized_session.value()
+        res.is_authorized = true
+        forwardRequest(req, res)
+      else
+        res.is_authorized = false
+        res.status(403)
+        console.log(logger(req, res))
+        res.send(config.get('accessDeniedMessage'))
+
 The is the function that actually forwards a request to the backend
 service.
 
     forwardRequest = (req, res) ->
       res.header('Drupal-Auth-Proxy-Host', os.hostname())
       if config.get('devMode')
-        console.log 'FORWARD: ' + req.url # @debug
+        console.log 'FORWARD: ' + req.url
+      console.log(logger(req, res))
       Proxy.web req, res, {target: config.get('backend')}, (error) ->
         console.log(error)
 
-This is the callback used by the web server framework.
 
-    handleRequest = (req, res) ->
-      if config.get('devMode')
-        console.log(req.cookies)
-      allow_access = u.chain(req.cookies)
+This function returns any session cookie keys.
+
+    getSessionCookies = (req) ->
+      u.chain(req.cookies)
         .keys()
         .filter (x) -> x.match(/^(S|)SESS/)
-        .find (session_key) ->
-           isValidCookie(req, session_key)
+        .value()
 
-      if allow_access.value()
-        forwardRequest(req, res)
-      else
-        res.status(403)
-        res.send(config.get('accessDeniedMessage'))
-
-Here we query the Drupal data to see if a given Session ID is associated
-with a logged-in user with the role required by our configuration.
-Because of the use of wait.forMethod(), this should be run inside a
+Return the IDs of the Drupal Roles for a given user session.
+Because of the use of wait.forMethod(), this must be run inside a
 "Fiber," which is explained below.
 
-    isValidCookie = (req, session_key) ->
+    getDrupalRoles = (req, session_key) ->
       session_id = req.cookies[session_key]
 
 We first check a local cache.
@@ -153,43 +175,101 @@ every resource in a page request.
 
         cache.put(session_id, user_roles, 5000)
 
+      return user_roles
+
+Here we query the Drupal data to see if a given Session ID is associated
+with a logged-in user with the role required by our configuration.
+
+    isAuthorized = (req, session_key) ->
+      user_roles = getDrupalRoles(req, session_key)
+
 If we didn't find any roles, deny access.
 
       if user_roles.length < 1
-          return false
+        return false
 
 Here we can support different role requirements by path. We match by
 removing subpaths in the request url until we find a match in the
 configuration, or reach the root, at which point we use the default role Id.
 
       if config.get("devMode")
-          console.log('Drupal Roles: ' + user_roles)
+        console.log('Drupal Roles: ' + user_roles)
 
       if config.has('roleIdPath')
-          path_to_lookup = req.path
+        path_to_lookup = req.path
 
 Check for an exact match.
 
-          if config.get('roleIdPath').has(path_to_lookup)
-            return config.get('roleIdPath').get(path_to_lookup) in user_roles
+        if config.get('roleIdPath').has(path_to_lookup)
+          return config.get('roleIdPath').get(path_to_lookup) in user_roles
 
 Remove sub-paths until we have a path that is configured, or the root.
 
-          while path_to_lookup.length > 1 and not config.get('roleIdPath').has(path_to_lookup)
-            split = path_to_lookup.split("/")
-            split.pop()
-            path_to_lookup = split.join("/")
-            if config.get("devMode")
-              console.log('Look-up: `' + path_to_lookup + '`')
+        while path_to_lookup.length > 1 and not config.get('roleIdPath').has(path_to_lookup)
+          split = path_to_lookup.split("/")
+          split.pop()
+          path_to_lookup = split.join("/")
+          if config.get("devMode")
+            console.log('Look-up: `' + path_to_lookup + '`')
 
-          if config.get('roleIdPath').has(path_to_lookup)
-            return config.get('roleIdPath').get(path_to_lookup) in user_roles
+        if config.get('roleIdPath').has(path_to_lookup)
+          return config.get('roleIdPath').get(path_to_lookup) in user_roles
 
 At this point, we didn't find a configured path, so we use the default.
 
       if config.get("devMode")
         console.log('Root fallback.')
       return config.get('roleId') in user_roles
+
+This function finds a Drupal User ID for the user, if available, or returns 0.
+
+    getDrupalUserId = (req) ->
+      uid = 0
+      cookies = getSessionCookies(req)
+      while uid == 0 and cookies.length > 0
+        session_key = cookies.pop()
+        lookup = queryUid(req.cookies[session_key])
+        if lookup > 0
+          uid = lookup
+          if isAuthorized(req, session_key)
+            break
+      req.uid = uid
+      return uid
+
+Query the Drupal database for the user ID of a session ID.
+
+    queryUid = (session_id) ->
+      uid = cache.get("uid/" + session_id)
+      if not uid?
+        msg = "UID query: "
+        prefix = config.get('dbPrefix')
+        sql = "SELECT uid
+		 FROM #{ prefix }sessions
+		 WHERE sid = '#{ session_id }'
+		 LIMIT 1;"
+        query_result = wait.forMethod(db, 'query', sql)
+
+        uid = query_result[0].uid
+        # Cache for 5 minutes.
+        cache.put("uid/" + session_id, uid, 300000)
+      if config.get("devMode")
+        msg ?= "UID from cache: "
+        console.log(msg + uid)
+      return uid
+
+Start the Web server.
+----
+
+Set-up Express with cookie parsing.
+
+    app = websrv()
+    app.use cookieParser()
+
+If we're behind a trusted reverse proxy, like Varnish, we'll forward some
+headers.
+
+    if config.get('trustProxy')
+      app.enable 'trust proxy'
 
 Tell the web server framework to handle all requests inside a "Fiber"
 which allows sychronous operations without blocking the main event loop.
@@ -202,7 +282,7 @@ reason that I can't remember, I think this works best when added last.
 
     app.use errorhandler()
 
-Start the server.
+Configure server port & SSL.
 
     appPort = config.get('appPort')
     cert = config.get('sslCertPath')
@@ -215,4 +295,5 @@ Start the server.
     else
       console.log("Missing Certificate or key. Running without SSL.")
       http.createServer(app).listen(appPort)
-    console.log("Listening on port #{ appPort }.")
+    if config.get('devMode')
+      console.log("Listening on port #{ appPort }.")
