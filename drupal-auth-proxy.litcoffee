@@ -249,7 +249,7 @@ Query the Drupal database for the user ID of a session ID.
 		 LIMIT 1;"
         query_result = wait.forMethod(db, 'query', sql)
 
-        uid = query_result[0].uid
+        uid = query_result[0]?.uid
         # Cache for 5 minutes.
         cache.put("uid/" + session_id, uid, 300000)
       if config.get("devMode")
