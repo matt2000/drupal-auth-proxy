@@ -6,7 +6,8 @@ Dependencies.
 - Utility functions are provided by 'underscore'.
 - File-system functions are provided by 'fs'.
 - Non-blocking wrappers for synchronous functions are provided by 'wait'.
-- The web server 'websrv' is powered Express and Helmet improves HTTP security.
+- The web server 'websrv' is powered by Express and Helmet and improves HTTP
+  security.
 
 File a bug report if any of the other dependencies' purpose is not sufficiently
 clear from the variable name.
