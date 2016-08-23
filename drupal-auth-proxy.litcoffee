@@ -6,9 +6,7 @@ Dependencies.
 - Utility functions are provided by 'underscore'.
 - File-system functions are provided by 'fs'.
 - Non-blocking wrappers for synchronous functions are provided by 'wait'.
-- The web server framework is 'websrv'. Currently Express is used, but it could
-  be stripped out fairly easily for direct use of Node's http library or
-  something else.
+- The web server 'websrv' is powered Express and Helmet improves HTTP security.
 
 File a bug report if any of the other dependencies' purpose is not sufficiently
 clear from the variable name.
@@ -17,6 +15,7 @@ clear from the variable name.
     httpProxy = require 'http-proxy'
     websrv = require 'express'
     https = require 'https'
+    helmet = require 'helmet'
     config = require 'config'
     mysql = require 'mysql'
     os = require 'os'
@@ -83,6 +82,10 @@ Set-up our Proxy for relaying requests to our backend.
 
     Proxy.on 'error', (error) ->
       console.log(error)
+
+    Proxy.on 'proxyRes', (proxyRes, req, res) ->
+      if config.get('devMode')
+        console.log('PROXY RESPONSE CODE: ' + JSON.stringify(proxyRes.statusCode))
 
 Utility Functions
 ----
@@ -260,10 +263,16 @@ Query the Drupal database for the user ID of a session ID.
 Start the Web server.
 ----
 
-Set-up Express with cookie parsing.
+Set-up Express with cookie parsing and HSTS.
 
     app = websrv()
     app.use cookieParser()
+
+    ONE_YEAR = 31536000000
+    app.use helmet.hsts
+      maxAge: ONE_YEAR
+      includeSubdomains: true
+      force: true
 
 If we're behind a trusted reverse proxy, like Varnish, we'll forward some
 headers.
