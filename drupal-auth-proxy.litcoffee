@@ -135,7 +135,8 @@ The is the function that actually forwards a request to the backend
 service.
 
     forwardRequest = (req, res) ->
-      res.header('Drupal-Auth-Proxy-Host', os.hostname())
+      if config.get('devMode')
+        res.header('Drupal-Auth-Proxy-Host', os.hostname())
       if config.get('devMode')
         console.log 'FORWARD: ' + req.url
       console.log(logger(req, res))
@@ -268,6 +269,9 @@ Set-up Express with cookie parsing and HSTS.
 
     app = websrv()
     app.use cookieParser()
+
+    if !config.get('devMode')
+      app.disable('x-powered-by');
 
     ONE_YEAR = 31536000000
     app.use helmet.hsts
