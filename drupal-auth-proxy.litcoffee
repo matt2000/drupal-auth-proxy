@@ -299,6 +299,7 @@ Configure server port & SSL.
     key = config.get('sslKeyPath')
     if fs.existsSync(cert) and fs.existsSync(key)
       options =
+        "secureOptions": require('constants').SSL_OP_NO_TLSv1,
         "cert": fs.readFileSync(cert),
         "key": fs.readFileSync(key)
       https.createServer(options, app).listen(appPort)
