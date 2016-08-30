@@ -271,7 +271,7 @@ Set-up Express with cookie parsing and HSTS.
     app.use cookieParser()
 
     if !config.get('devMode')
-      app.disable('x-powered-by');
+      app.disable('x-powered-by')
 
     ONE_YEAR = 31536000000
     app.use helmet.hsts
