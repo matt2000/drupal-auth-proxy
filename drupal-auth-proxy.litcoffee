@@ -84,6 +84,10 @@ Set-up our Proxy for relaying requests to our backend.
     Proxy.on 'error', (error) ->
       console.log(error)
 
+    Proxy.on 'proxyReq', (proxyReq, req, res, options) ->
+      req.headers['X-Drupal-UID'] = req.drupal_uid
+      req.headers['X-Drupal-session'] = req.drupal_session
+
     Proxy.on 'proxyRes', (proxyRes, req, res) ->
       if config.get('devMode')
         console.log('PROXY RESPONSE CODE: ' + JSON.stringify(proxyRes.statusCode))
@@ -140,7 +144,10 @@ service.
       if config.get('devMode')
         console.log 'FORWARD: ' + req.url
       console.log(logger(req, res))
-      Proxy.web req, res, {target: config.get('backend')}, (error) ->
+      Proxy.web req, res, {
+          target: config.get('backend'),
+          xfwd: true
+        }, (error) ->
         console.log(error)
 
 
