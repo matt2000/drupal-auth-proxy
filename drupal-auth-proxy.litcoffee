@@ -85,8 +85,8 @@ Set-up our Proxy for relaying requests to our backend.
       console.log(error)
 
     Proxy.on 'proxyReq', (proxyReq, req, res, options) ->
-      req.headers['X-Drupal-UID'] = req.drupal_uid
-      req.headers['X-Drupal-session'] = req.drupal_session
+      proxyReq.setHeader('X-Drupal-UID', req.drupal_uid)
+      proxyReq.setHeader('X-Drupal-session', req.drupal_session)
 
     Proxy.on 'proxyRes', (proxyRes, req, res) ->
       if config.get('devMode')
