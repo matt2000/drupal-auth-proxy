@@ -87,9 +87,9 @@ Set-up our Proxy for relaying requests to our backend.
     Proxy.on 'proxyReq', (proxyReq, req, res, options) ->
       proxyReq.setHeader('X-Drupal-UID', req.drupal_uid)
       proxyReq.setHeader('X-Drupal-session', req.drupal_session)
-      proxyReq.setHeader('Cookie', 'Drupal-uid=' + req.drupal_uid + '; Drupal-session=' + req.drupal_session)
 
     Proxy.on 'proxyRes', (proxyRes, req, res) ->
+      res.setHeader('X-Drupal-UID', req.drupal_uid)
       if config.get('devMode')
         console.log('PROXY RESPONSE CODE: ' + JSON.stringify(proxyRes.statusCode))
 

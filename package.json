@@ -35,5 +35,8 @@
   "license": "GPL-2.0+",
   "bugs": {
     "url": "https://github.com/cardcorp/drupal-auth-proxy/issues"
+  },
+  "devDependencies": {
+    "nodemon": "^1.11.0"
   }
 }
