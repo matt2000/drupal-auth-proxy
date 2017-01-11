@@ -89,7 +89,6 @@ Set-up our Proxy for relaying requests to our backend.
       proxyReq.setHeader('X-Drupal-session', req.drupal_session)
 
     Proxy.on 'proxyRes', (proxyRes, req, res) ->
-      res.setHeader('X-Drupal-UID', req.drupal_uid)
       if config.get('devMode')
         console.log('PROXY RESPONSE CODE: ' + JSON.stringify(proxyRes.statusCode))
 
@@ -140,6 +139,7 @@ The is the function that actually forwards a request to the backend
 service.
 
     forwardRequest = (req, res) ->
+      res.header('X-Drupal-UID', req.uid)
       if config.get('devMode')
         res.header('Drupal-Auth-Proxy-Host', os.hostname())
       if config.get('devMode')
