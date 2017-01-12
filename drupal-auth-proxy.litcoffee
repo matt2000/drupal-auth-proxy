@@ -140,6 +140,7 @@ service.
 
     forwardRequest = (req, res) ->
       res.header('X-Drupal-UID', req.uid)
+      res.header('X-Client-IP', req.hostname)
       if config.get('devMode')
         res.header('Drupal-Auth-Proxy-Host', os.hostname())
       if config.get('devMode')
