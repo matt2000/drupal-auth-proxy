@@ -139,8 +139,8 @@ The is the function that actually forwards a request to the backend
 service.
 
     forwardRequest = (req, res) ->
-      res.header('X-Drupal-UID', req.uid)
-      res.header('X-Client-IP', req.ip)
+      res.cookie('Drupal-UID', req.drupal_uid , { maxAge: 900000, httpOnly: false })
+      res.cookie('Client-IP', req.headers['x-forwarded-for'] || req.connection.remoteAddress, { maxAge: 900000, httpOnly: false })
       if config.get('devMode')
         res.header('Drupal-Auth-Proxy-Host', os.hostname())
       if config.get('devMode')
