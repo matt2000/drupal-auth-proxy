@@ -2,7 +2,7 @@ FROM  node:10-alpine
 
 WORKDIR /opt/drupal-auth-proxy/
 
-ADD * .
+ADD * ./
 
 RUN npm install
 
